@@ -17,16 +17,14 @@ from plugin_manager import PluginManager
 DEFAULT_SETTINGS_FILE = '/etc/elasticd/settings.cfg'
 LOG_FORMAT = '%(asctime)-15s %(module)s %(funcName)s %(thread)d %(message)s'
 
-
 def startup(config_path=DEFAULT_SETTINGS_FILE):
     #init logging
-    setup_logging()
+    config = ConfigParser.ConfigParser()
+    config.read(config_path)
+    setup_logging(config)
 
     #load the config file and start the listener, daemon
-    logging.debug("init starting up")
-    config = ConfigParser.ConfigParser()
     logging.debug('reading setting from: %s' % config_path)
-    config.read(config_path)
 
     #Load the plugin manager to get a handle to the plugins.
     _plugin_manager = PluginManager(config)
@@ -47,14 +45,12 @@ def startup(config_path=DEFAULT_SETTINGS_FILE):
     daemon.start(_registrar, locator, config)
 
 
-def setup_logging():
-    #todo set logging path in /var/log/elasticd/  read from config?
-    handler = logging.handlers.TimedRotatingFileHandler('elasticd.log',
-                                                        when="d",
-                                                        interval=1,
-                                                        backupCount=5)
+def setup_logging(config):
+    handler = logging.handlers.RotatingFileHandler(config.get('DEFAULT', 'log_file'),
+                                                   maxBytes=1024*1024*100,
+                                                   backupCount=5)
     formatter = logging.Formatter(LOG_FORMAT)
     handler.setFormatter(formatter)
     logger = logging.getLogger()
     logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(config.getint('DEFAULT', 'log_level'))
